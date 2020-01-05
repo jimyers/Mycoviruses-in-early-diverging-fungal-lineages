@@ -1,9 +1,18 @@
 #The following scripts were run on the University of Michigan's high performance computing cluster.
-#Briefly, raw transcriptomes were downloaded from SRA using the sratoolkit, filtered for quality using fastxtoolkit, and converted to fasta format. Single-end reads were assembled with Trinity, ORFs predicted with Transdecoder, and the ORFs searched for homology with RdRPs using hmmscan. 
-#The RdRP profile was made as follows.....(fill in here)
+
+#RdRP hmm profile:
+#The RdRP profile was made as follows by downloading stockholm files of the complete alignments of RdRP_1 (PF00680; 704 seqs), RdRP_2 (PF00978; 367 seqs), RdRP_3 (PF00998; 203 seqs), RdRP_4 (PF02123; 200 seqs), Mito_RNA_pol (PF05919; 141 seqs), builiding hmm profiles for each, and concatonating them.
 cd path/virusHMM
+module load hmmer
+hmmbuild rdrp2.hmm PF00978_full.sto
+hmmbuild rdrp1.hmm PF00680_full.sto
+hmmbuild rdrp3.hmm PF00998_full.sto
+hmmbuild rdrp4.hmm PF02123_full.sto
+hmmbuild rdrpM.hmm PF05919_full.sto
+cat rdrp1.hmm rdrp2.hmm rdrp3.hmm rdrp4.hmm rdrpM.hmm > rdrp-hmm
 
-
+#Transcriptome screening:
+#Briefly, raw transcriptomes were downloaded from SRA using the sratoolkit, filtered for quality using fastxtoolkit, and converted to fasta format. Single-end reads were assembled with Trinity, ORFs predicted with Transdecoder, and the ORFs searched for homology with RdRPs using hmmscan.
 module load fastx-toolkit
 module load intel/17.0.1
 module load bowtie2/2.3.2
@@ -19,6 +28,9 @@ cd ./trinity
 TransDecoder.LongOrfs -t Trinity.fasta
 cd ./Trinity.fasta.transdecoder_dir
 hmmscan --cpu 4 --domtblout pfamhits /path/virusHMM/rdrp-hmm ./longest_orfs.pep
-#Each of the sequences that hit to the rdrp-hmm were queried by TBLASTN. The python script "grabber.py" is found in MichiganMycology/Lab-code-and-hacks.
+#Each of the sequences that hit to the rdrp-hmm were queried by TBLASTN. The python script "grabber.py" is found in MichiganMycology/Lab-code-and-hacks. First, make a new file with just the seq name of hits separated by lines, name it "list".
 module load python-anaconda2
-cd path/pythonscripts
+python /path/pythonscripts/grabber.py ./list ./longest_orfs.pep n > /path/hmmhits/Seqs/isolateHitSeqs
+module load ncbi-blast/2.9.0
+cd /path/hmmhits/Seqs
+tblastn -db /nfs/med-ref-genomes/blast/nt -evalue 1e-5 -max_target_seqs 2 -outfmt "6 qseqid sseqid staxids sacc sblastnames evalue length" -query /path/hmmhits/Seqs/isolateHitSeqs -out ./out/isolate-tblastn
