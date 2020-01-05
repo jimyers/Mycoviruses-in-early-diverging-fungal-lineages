@@ -1,0 +1,24 @@
+#The following scripts were run on the University of Michigan's high performance computing cluster.
+#Briefly, raw transcriptomes were downloaded from SRA using the sratoolkit, filtered for quality using fastxtoolkit, and converted to fasta format. Single-end reads were assembled with Trinity, ORFs predicted with Transdecoder, and the ORFs searched for homology with RdRPs using hmmscan. 
+#The RdRP profile was made as follows.....(fill in here)
+cd path/virusHMM
+
+
+module load fastx-toolkit
+module load intel/17.0.1
+module load bowtie2/2.3.2
+module load trinity/2.4.0
+module load perl-modules R
+module load transdecoder
+module load hmmer
+cd /path/
+fastq_quality_filter -Q 33 -q 20 -p 100 -i SRR#######.fastq -o qfilter.fastq -v
+fastq_to_fasta -n -v -i qfilter.fastq -o qfilter.fasta
+/sw/med/centos7/trinity/2.4.0/Trinity --seqType fa --single /path/qfilter.fasta --CPU 4 --max_memory 16G --output /path/trinity
+cd ./trinity
+TransDecoder.LongOrfs -t Trinity.fasta
+cd ./Trinity.fasta.transdecoder_dir
+hmmscan --cpu 4 --domtblout pfamhits /path/virusHMM/rdrp-hmm ./longest_orfs.pep
+#Each of the sequences that hit to the rdrp-hmm were queried by TBLASTN. The python script "grabber.py" is found in MichiganMycology/Lab-code-and-hacks.
+module load python-anaconda2
+cd path/pythonscripts
