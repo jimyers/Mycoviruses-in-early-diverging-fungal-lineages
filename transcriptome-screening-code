@@ -32,3 +32,14 @@ python /path/pythonscripts/grabber.py ./list ./longest_orfs.pep n > /path/hmmhit
 module load ncbi-blast/2.9.0
 cd /path/hmmhits/Seqs
 tblastn -db /nfs/med-ref-genomes/blast/nt -evalue 1e-5 -max_target_seqs 2 -outfmt "6 qseqid sseqid staxids sacc sblastnames evalue length" -query /path/hmmhits/Seqs/isolateHitSeqs -out ./out/isolate-tblastn
+
+#PRICE assembly extension
+#Retrieve just the contig identifier from list_vir, remove non-viral contigs, then use grabber.py to retrieve fasta sequences. These will be the seeds for extension.
+cat list | cut -d ':' -f3 > list_vir
+module load python-anaconda2
+python /path/pythonscripts/grabber.py ./list_vir ../Trinity.fasta n > /path/virus-reads.fasta
+#Quality filter raw reads, extend virus-reads.fasta with PRICE
+module load fastx-toolkit
+fastq_quality_filter -q 5 -p 100 -i SRRXXXX_1.fastq -o reads1-p05.fastq -v
+fastq_to_fasta -n -v -i reads1-p05.fastq -o reads1-p05.fasta
+/path/PriceSource140408/PriceTI -a 8 -spf /path/reads1-p05.fasta 75 150 -icf /path/virus-reads.fasta 1 1 5 -nc 10 -mol 30 -tol 20 -mpi 80 -target 90 0 -o /path/price-output/price.fasta
